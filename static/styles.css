@@ -1,0 +1,106 @@
+/* General Styles */
+
+:root {
+    --control-panel-color: #007bff;
+    --control-panel-border-color: #0056b3;
+    --control-panel-box-shadow-color: rgba(0, 0, 0, 0.3);
+    --aviation-grey-color: #b0b0b0;
+    --aviation-dark-grey-color: #A9A9A9;
+    --aviation-black-color: #000000;
+    --avation-lettering-color: #f4f4f4;
+    --button-rim-color: #dad8d8;
+    --button-rim-color-on: #E1D3AD;
+    --button-side-color: #c5c5c5;
+    --button-side-color-on: #D0C49D;
+    --button-background-color: #575757;
+    --button-background-color-on: #6B5523;
+  }
+body {
+    font-family: 'Oswald', sans-serif;
+    background-color: #313131; /* 747 cockpit grey */
+    color: var(--avation-lettering-color);
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+  }
+  
+  .control-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 20px;
+    background-color: var(--aviation-dark-grey-color);
+    text-align: center;
+    border: 2px solid #474646;
+    border-radius: 10px;
+    box-shadow: 0 4px 10px var(--control-panel-box-shadow-color);
+    width: 400px;
+    min-height: 400px;
+
+  }
+
+  .sub-panel {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: center; /* Centers horizontally */
+    align-items: center;    /* Centers vertically */
+    gap: 40px;
+    border: solid 2px var(--avation-lettering-color);
+    min-width: 100px;
+    max-width: 100px;
+    min-height: 300px;
+    border-radius: 4px;
+  }
+  .sub-panel .border-text{
+    white-space: nowrap; 
+    position: absolute;
+    top: -10px; /* Move the text up to sit on the border */
+    left: 50%; /* Center the text horizontally */
+    width: fit-content;
+    transform: translateX(-50%); /* Adjust for centering */
+    background-color: var(--aviation-dark-grey-color); /* Match the background */
+    padding: 0 10px; /* Add padding around the text */
+    font-size: 14px; /* Adjust text size */
+  }
+
+  /* #region BUTTONS */
+
+  /* General Button Styles */
+.push-button {
+    display: inline-block;
+    width: 80px;
+    height: 80px;
+    background-color: var(--button-background-color);
+    border: 3px solid var(--button-rim-color);
+    border-radius: 4px; 
+    box-shadow: 0 4px var(--button-side-color);
+    color: var(--avation-lettering-color); 
+    font-family: 'Oswald', sans-serif; 
+    font-size: 14px;
+    text-align: center;
+    line-height: 40px; /* Center-align text vertically */
+    text-transform: uppercase; 
+    cursor: pointer;
+    /* transition: all 0.1s ease-in-out; /* Smooth transition for interactions */
+    user-select: none; /* Prevent text selection on click */
+  }
+  
+ .push-button.on{
+    border-color: var(--button-rim-color-on);
+    box-shadow: 0 4px var(--button-side-color-on), 
+    0 0 10px rgba(255, 191, 0, 1); 
+    text-shadow: 0 0 10px rgba(255, 191, 0, 1), /* Glow effect on the text */
+    0 0 20px rgba(255, 191, 0, 0.8);
+    background-color: var(--button-background-color-on);
+
+
+  }
+  /* Active (Pressed) State */
+  .push-button:active {
+    box-shadow: 0 2px var(--button-side-color);
+    transform: translateY(2px); 
+  }
+    /* #endregion */

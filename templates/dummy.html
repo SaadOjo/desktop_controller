@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CONTROL PANEL</title>
+  <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400&display=swap" rel="stylesheet">  
+  <link rel="stylesheet" href="static/styles.css">
+  <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+</head>
+<body>
+  <div class="control-panel">
+    <h1>CONTROL PANEL</h1>
+    <div class="sub-panel">
+        <span class="border-text">AV PANEL</span>
+        <button id="mic-button" class="push-button">MIC</button>
+        <button id="cam-button" class="push-button">CAM</button>
+
+    </div>
+  </div>
+  <script>
+    // Wait for the document to be fully loaded
+    $(document).ready(function () {
+      // Attach a click event handler to the button
+      $("#mic-button").click(function () {
+        // Toggle the 'active' class on the button
+        $(this).toggleClass("on");
+      });
+        $("#cam-button").click(function () {
+            // Toggle the 'active' class on the button
+            $(this).toggleClass("on");
+        });
+    });
+  </script>
+</body>
+</html>

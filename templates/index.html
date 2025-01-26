@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control Panel</title>
+    <script src="https://cdn.socket.io/4.5.1/socket.io.min.js"></script>
+</head>
+<body>
+    <h1>Flask WebSocket Demo</h1>
+    <button onclick="sendMessage()">Send Message</button>
+    <button onclick="sendCustomEvent()">Send Custom Event</button>
+    <p id="output"></p>
+
+    <script>
+        // Connect to the WebSocket server
+        const socket = io();
+
+        // Handle incoming messages
+        socket.on('message', (data) => {
+            console.log('Message from server:', data);
+            document.getElementById('output').innerText = data;
+        });
+
+        // Handle responses to custom events
+        socket.on('response', (data) => {
+            console.log('Custom event response:', data);
+            document.getElementById('output').innerText = data.msg;
+        });
+
+        // Function to send a basic message
+        function sendMessage() {
+            socket.send('Hello from the client!');
+        }
+
+        // Function to send a custom event
+        function sendCustomEvent() {
+            socket.emit('custom_event', { msg: 'Hello, Server!' });
+        }
+    </script>
+</body>
+</html>

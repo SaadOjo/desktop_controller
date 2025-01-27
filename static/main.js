@@ -79,16 +79,8 @@ class Slider {
       this.containerRect = this.container.getBoundingClientRect();
     }
     const offsetY = this.containerRect.height * (1 - percentage / 100);
-
-    // Suppress the callback while updating the position
-    this.suppressCallback = true;
     this.handle.style.top = offsetY + 'px';
-    this.suppressCallback = false;
 
-    // Optionally, call the callback manually if needed
-    if (this.onChangeCallback) {
-      this.onChangeCallback(percentage);
-    }
   }
 }
 
@@ -137,12 +129,12 @@ $(document).ready(function () {
 
   volSlider = new Slider('vol', (value) => {
     console.log('Volume Slider Value:', value);
-    //sliderChanged('vol', value);
+    sliderChanged('vol', value);
   });
 
   brightSlider = new Slider('bright', (value) => {
     console.log('Brightness Slider Value:', value);
-    //sliderChanged('bright', value);
+    sliderChanged('bright', value);
   });
 
   let micButton;

@@ -4,6 +4,8 @@ import threading
 import asyncio
 import websockets
 from typing import Callable, Optional
+from urllib.parse import quote
+
 
 DEFAULT_TOKEN = "61e9d3d4-dbd6-425d-b80f-8110f48f769c"
 TOKEN_FILE = "token.txt"
@@ -13,10 +15,12 @@ class TeamsMeetingClient:
         self,
         manufacturer: str = "Token Financial Technologies",
         device: str = "Desktop Controller",
-        app: str = "Desktop Controller",
+        app: str = "Desktop Controller App",
         app_version: str = "1.0.00",
         meeting_started_callback: Optional[Callable[[], None]] = None,
         meeting_ended_callback: Optional[Callable[[], None]] = None,
+        on_connect_callback: Optional[Callable[[], None]] = None,
+        on_disconnect_callback: Optional[Callable[[], None]] = None
     ):
         """
         :param manufacturer: Defaults to "YourManufacturer"
@@ -32,12 +36,14 @@ class TeamsMeetingClient:
         self.app_version = app_version
         self.meeting_started_callback = meeting_started_callback
         self.meeting_ended_callback = meeting_ended_callback
+        self.on_connect_callback = on_connect_callback
+        self.on_disconnect_callback = on_disconnect_callback
 
         # Load token from file if available, else use default
         self.token = self._load_token()
 
         # Track the current "canPair" state (assuming True=not in meeting, False=in meeting)
-        self.can_pair = True  # By default, assume not in a meeting
+        self.can_pair = None  # By default, assume not in a meeting
         
         # For sending commands with incrementing request IDs
         self.request_id_counter = 1
@@ -47,9 +53,9 @@ class TeamsMeetingClient:
             f"ws://localhost:8124"
             f"?token={self.token}"
             f"&protocol-version=2.0.0"
-            f"&manufacturer={self.manufacturer}"
-            f"&device={self.device}"
-            f"&app={self.app}"
+            f"&manufacturer={quote(self.manufacturer)}"
+            f"&device={quote(self.device)}"
+            f"&app={quote(self.app)}"
             f"&app-version={self.app_version}"
         )
 
@@ -153,6 +159,8 @@ class TeamsMeetingClient:
         try:
             async with websockets.connect(self.ws_url) as ws:
                 print(f"Connected to {self.ws_url}")
+                if self.on_connect_callback:
+                    self.on_connect_callback()
                 # Listen for messages until stop_event is set
                 await self._receive_loop(ws)
         except Exception as e:
@@ -164,6 +172,7 @@ class TeamsMeetingClient:
             try:
                 raw_msg = await asyncio.wait_for(ws.recv(), timeout=1.0)
                 self._handle_message(raw_msg)
+                print(f"Received message: {raw_msg}")
             except asyncio.TimeoutError:
                 # Periodic check if we should stop
                 continue
@@ -212,16 +221,31 @@ class TeamsMeetingClient:
 
         # If canPair changes from True -> False, meeting started
         # If canPair changes from False -> True, meeting ended
+
+        if self.can_pair is None:
+            # First update, set the initial state
+            self.can_pair = can_pair_now
+
+            if not can_pair_now:
+                # Meeting started
+                if self.meeting_ended_callback:
+                    self.meeting_ended_callback()
+            else:
+                # Meeting ended
+                if self.meeting_started_callback:
+                    self.meeting_started_callback()
+            return
+
         if can_pair_now != self.can_pair:
             self.can_pair = can_pair_now
             if not can_pair_now:
                 # Meeting started
-                if self.meeting_started_callback:
-                    self.meeting_started_callback()
-            else:
-                # Meeting ended
                 if self.meeting_ended_callback:
                     self.meeting_ended_callback()
+            else:
+                # Meeting ended
+                if self.meeting_started_callback:
+                    self.meeting_started_callback()
 
     async def _close_ws(self):
         """Attempt to close the WebSocket if needed."""
@@ -232,6 +256,7 @@ class TeamsMeetingClient:
         """Enqueue a message to be sent on the WebSocket connection."""
         # Because websockets is async, we must schedule this in the event loop
         if hasattr(self, "loop") and self.loop.is_running():
+            print(f"Sending message: {message}")
             asyncio.run_coroutine_threadsafe(self._async_send(message), self.loop)
         else:
             print("WebSocket not connected or loop not running, cannot send message.")
@@ -247,3 +272,45 @@ class TeamsMeetingClient:
                 await ws.send(json.dumps(message))
         except Exception as e:
             print(f"Failed to send message: {e}")
+
+if __name__ == "__main__":
+    # Example usage of the TeamsMeetingClient
+    def on_meeting_start():
+        print("Meeting started!")
+
+    def on_meeting_end():
+        print("Meeting ended!")
+
+    myClient = TeamsMeetingClient(
+        meeting_started_callback=on_meeting_start,
+        meeting_ended_callback=on_meeting_end
+    )
+    myClient.start()
+
+    input("Press Enter to stop the client...")
+
+
+    # Example of sending a reaction
+    myClient.send_reaction("like")
+
+    # Example of toggling background blur
+    myClient.toggle_background_blur()
+
+    # Example of toggling video
+    myClient.toggle_video()
+
+    # Example of toggling mute
+    myClient.toggle_mute()
+
+    # Example of toggling hand
+    myClient.toggle_hand()
+
+    # Example of leaving the call
+    myClient.leave_call()
+
+    # Wait for a while before stopping the client
+    input("Press Enter to stop the client...")
+
+    # Stop the client
+    myClient.stop()
+    print("Client stopped.")

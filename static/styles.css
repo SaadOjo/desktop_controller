@@ -45,6 +45,12 @@ body {
     gap: 20px;
     justify-content: center;
   }
+  .vertical-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    justify-content: center;
+  }
 
   .sub-panel {
     position: relative;
@@ -59,6 +65,13 @@ body {
     min-height: 260px;
     border-radius: 4px;
   }
+  .sub-panel.horizontal{
+    flex-direction: row;
+    min-height: 80px;
+    width: 87%; /* TODO: Make this such that this value is automatically induced */
+    max-width:  none;
+    gap: 80px;
+  }
   .sub-panel .border-text{
     white-space: nowrap; 
     position: absolute;
@@ -70,6 +83,71 @@ body {
     padding: 0 10px; /* Add padding around the text */
     font-size: 14px; /* Adjust text size */
   }
+
+  .led-label-group{
+    padding-top: 00px;
+    display: flex;
+    flex-direction: column;
+    font-size: small;
+    gap: 04px;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* #region LEDS */
+
+/* LED */
+.led {
+  /* LED size and shape */
+  position: relative;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%; /* Circular shape */
+
+  background: #4e0909; /* Red LED color */
+  border: 3px solid; /* Silver-like color */
+  border-color: #504e4e; /* Red LED color */
+}
+
+.led::before {
+  content: '';
+  position: absolute;
+  width: 76%; /* Slightly smaller than the LED */
+  height: 76%;
+  top: 8%;
+  left: 12%;
+  border-radius: 50%;
+  background: #602222;
+  z-index: 2;
+}
+
+.led.on{
+
+  background: #ab1414; /* Red LED color */
+  border: 3px solid; /* Silver-like color */
+  border-color: #504e4e; /* Red LED color */
+  
+  /* Slight glow effect */
+  box-shadow: 
+    0 0 10px rgba(255, 0, 0, 0.8), /* soft outer glow */
+    0 0 20px rgba(255, 0, 0, 0.6); /* extended outer glow */
+
+}
+
+.led.on::before {
+  content: '';
+  position: absolute;
+  width: 76%; /* Slightly smaller than the LED */
+  height: 76%;
+  top: 8%;
+  left: 12%;
+  border-radius: 50%;
+  background: #ff0000;
+  z-index: 2;
+}
+
+
+  /* #endregion */
 
   /* #region BUTTONS */
 

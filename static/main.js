@@ -119,6 +119,19 @@ class Button {
   }
 }
 
+class Led {
+  constructor(id) {
+    this.led = document.getElementById(`${id}-led`);
+    if (!this.led) {
+      throw new Error(`LED element for '${id}' not found.`);
+    }
+  }
+
+  // Method to set the state programmatically
+  setState(isOn) {
+    this.led.classList.toggle('on', isOn); // Add/remove 'on' class
+  }
+}
 
 $(document).ready(function () {
 
@@ -183,5 +196,26 @@ $(document).ready(function () {
         break;
     }
   });
+
+  let meetingLed = new Led('meeting');
+  let connectedLed = new Led('connected');
+
+
+  socket.on('set-led-state', (data) => {
+    const { id, state } = data;
+    switch (id) {
+      case 'meeting':
+        meetingLed.setState(state);
+        break;
+      case 'connected':
+        connectedLed.setState(state);
+        break;
+    }
+    
+  });
+
+
+
+
 
 });

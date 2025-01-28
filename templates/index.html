@@ -12,65 +12,81 @@
 <body>
   <div class="control-panel">
     <h1>CONTROL PANEL</h1>
-    <div class="horizontal-panel">
-        <div class="sub-panel">
-            <span class="border-text">AV PANEL</span>
-            <button id="mic-button" class="push-button">MIC</button>
-            <button id="cam-button" class="push-button">CAM</button>
-        </div>
-        <div class="sub-panel">
-            <span class="border-text">VOLUME</span>
-
-            <div class="slider-container" id="vol_sliderContainer">
-                <div class="slider-track"></div>
-                
-                <!-- The "knob" or "fader" handle -->
-                <div class="slider-handle" id="vol_sliderHandle">
-                    <div class="horizontal-line"></div>
+    <div class="vertical-panel">
+        <div class="horizontal-panel">
+            <div class="sub-panel horizontal">
+                <span class="border-text">STATUS</span>
+                <div class="led-label-group">
+                    <span>IN MEETING</span>
+                    <div class="led" id="meeting-led"></div>
                 </div>
-                
-                <!-- Ticks or markings along the side -->
-                <div class="slider-ticks">
-                    <div class="tick" style="bottom: 0%;">-</div>
-                    <div class="tick" style="bottom: 10%;">-</div>
-                    <div class="tick" style="bottom: 20%;">-</div>
-                    <div class="tick" style="bottom: 30%;">-</div>
-                    <div class="tick" style="bottom: 40%;">-</div>
-                    <div class="tick" style="bottom: 50%;">-</div>
-                    <div class="tick" style="bottom: 60%;">-</div>
-                    <div class="tick" style="bottom: 70%;">-</div>
-                    <div class="tick" style="bottom: 80%;">-</div>
-                    <div class="tick" style="bottom: 90%;">-</div>
-                    <div class="tick" style="bottom: 100%;">-</div>
-              </div>
+                <div class="led-label-group">
+                    <span>CONNECTED</span>
+                    <div class="led" id="connected-led"></div>
+                </div>
             </div>
         </div>
-        <div class="sub-panel">
-            <span class="border-text">BRIGHTNESS</span>
-            <div class="slider-container" id="bright_sliderContainer">
-                <div class="slider-track"></div>
-                
-                <!-- The "knob" or "fader" handle -->
-                <div class="slider-handle" id="bright_sliderHandle">
-                    <div class="horizontal-line"></div>
+        <div class="horizontal-panel">
+            <div class="sub-panel">
+                <span class="border-text">AV PANEL</span>
+                <button id="mic-button" class="push-button">MIC</button>
+                <button id="cam-button" class="push-button">CAM</button>
+            </div>
+            <div class="sub-panel">
+                <span class="border-text">VOLUME</span>
+    
+                <div class="slider-container" id="vol_sliderContainer">
+                    <div class="slider-track"></div>
+                    
+                    <!-- The "knob" or "fader" handle -->
+                    <div class="slider-handle" id="vol_sliderHandle">
+                        <div class="horizontal-line"></div>
+                    </div>
+                    
+                    <!-- Ticks or markings along the side -->
+                    <div class="slider-ticks">
+                        <div class="tick" style="bottom: 0%;">-</div>
+                        <div class="tick" style="bottom: 10%;">-</div>
+                        <div class="tick" style="bottom: 20%;">-</div>
+                        <div class="tick" style="bottom: 30%;">-</div>
+                        <div class="tick" style="bottom: 40%;">-</div>
+                        <div class="tick" style="bottom: 50%;">-</div>
+                        <div class="tick" style="bottom: 60%;">-</div>
+                        <div class="tick" style="bottom: 70%;">-</div>
+                        <div class="tick" style="bottom: 80%;">-</div>
+                        <div class="tick" style="bottom: 90%;">-</div>
+                        <div class="tick" style="bottom: 100%;">-</div>
+                  </div>
                 </div>
-                
-                <!-- Ticks or markings along the side -->
-                <div class="slider-ticks">
-                    <div class="tick" style="bottom: 0%;">-</div>
-                    <div class="tick" style="bottom: 10%;">-</div>
-                    <div class="tick" style="bottom: 20%;">-</div>
-                    <div class="tick" style="bottom: 30%;">-</div>
-                    <div class="tick" style="bottom: 40%;">-</div>
-                    <div class="tick" style="bottom: 50%;">-</div>
-                    <div class="tick" style="bottom: 60%;">-</div>
-                    <div class="tick" style="bottom: 70%;">-</div>
-                    <div class="tick" style="bottom: 80%;">-</div>
-                    <div class="tick" style="bottom: 90%;">-</div>
-                    <div class="tick" style="bottom: 100%;">-</div>
-                </div>
-              </div>
+            </div>
+            <div class="sub-panel">
+                <span class="border-text">BRIGHTNESS</span>
+                <div class="slider-container" id="bright_sliderContainer">
+                    <div class="slider-track"></div>
+                    
+                    <!-- The "knob" or "fader" handle -->
+                    <div class="slider-handle" id="bright_sliderHandle">
+                        <div class="horizontal-line"></div>
+                    </div>
+                    
+                    <!-- Ticks or markings along the side -->
+                    <div class="slider-ticks">
+                        <div class="tick" style="bottom: 0%;">-</div>
+                        <div class="tick" style="bottom: 10%;">-</div>
+                        <div class="tick" style="bottom: 20%;">-</div>
+                        <div class="tick" style="bottom: 30%;">-</div>
+                        <div class="tick" style="bottom: 40%;">-</div>
+                        <div class="tick" style="bottom: 50%;">-</div>
+                        <div class="tick" style="bottom: 60%;">-</div>
+                        <div class="tick" style="bottom: 70%;">-</div>
+                        <div class="tick" style="bottom: 80%;">-</div>
+                        <div class="tick" style="bottom: 90%;">-</div>
+                        <div class="tick" style="bottom: 100%;">-</div>
+                    </div>
+                  </div>
+            </div>
         </div>
+
     </div>
   </div>
   <script src="static/main.js"></script>

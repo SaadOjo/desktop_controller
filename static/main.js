@@ -156,13 +156,13 @@ $(document).ready(function () {
   micButton = new Button('mic', () => {
     console.log('Mic Button Toggled');
     buttonToggled('mic');
-    micButton.setState(!micButton.button.classList.contains('on'));
+    //micButton.setState(!micButton.button.classList.contains('on'));
   });
 
   camButton = new Button('cam', () => {
     console.log('Cam Button Toggled');
     buttonToggled('cam');
-    camButton.setState(!camButton.button.classList.contains('on'));
+    //camButton.setState(!camButton.button.classList.contains('on'));
   });
 
 

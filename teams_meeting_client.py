@@ -19,13 +19,10 @@ class TeamsMeetingClient:
     def __init__(
         self,
         manufacturer: str = "Token Financial Technologies",
-        device: str = "Desktop Controller",
-        app: str = "Desktop Controller App",
+        device: str = "ortaboy",
+        app: str = "ortanator",
         app_version: str = "1.0.00",
-        meeting_started_callback: Optional[Callable[[], None]] = None,
-        meeting_ended_callback: Optional[Callable[[], None]] = None,
-        on_connect_callback: Optional[Callable[[], None]] = None,
-        on_disconnect_callback: Optional[Callable[[], None]] = None
+        state_change_callback: Optional[Callable[[dict], None]] = None
     ):
         """
         :param manufacturer: Defaults to "YourManufacturer"
@@ -39,16 +36,23 @@ class TeamsMeetingClient:
         self.device = device
         self.app = app
         self.app_version = app_version
-        self.meeting_started_callback = meeting_started_callback
-        self.meeting_ended_callback = meeting_ended_callback
-        self.on_connect_callback = on_connect_callback
-        self.on_disconnect_callback = on_disconnect_callback
+        self.state_change_callback = state_change_callback
+        self.ws = None
+
+        self.current_state = { #None means do not know
+            "isInMeeting": None,
+            "isMuted": None,
+            "isVideoOn": None,
+            "isBackgroundBlurred": None,
+            "isHandRaised": None,
+            "isRecordingOn": None,
+            "isSharing": None,
+            "hasUnreadMessages": None,
+            "isWsConnected": None
+        }
 
         # Load token from file if available, else use default
         self.token = self._load_token()
-
-        # Track the current "canPair" state (assuming True=not in meeting, False=in meeting)
-        self.can_pair = None  # By default, assume not in a meeting
         
         # For sending commands with incrementing request IDs
         self.request_id_counter = 1
@@ -82,6 +86,28 @@ class TeamsMeetingClient:
         except Exception:
             pass
         self.thread.join()
+
+    def get_full_state(self) -> dict:
+        """Return the full state of the client."""
+        return self.current_state
+
+    def send_custom_command(self, action: str, parameters: dict):
+        """Send a custom command to the WebSocket server."""
+        action_data = {
+            "action": action,
+            "parameters": parameters,
+            "requestId": self._get_request_id()
+        }
+        self._send_message(action_data)
+
+    def send_pairing_request(self):
+        """Send a pairing request to the WebSocket server."""
+        action_data = {
+            "action": "pair",
+            "parameters": {},
+            "requestId": self._get_request_id()
+        }
+        self._send_message(action_data)
 
     def send_reaction(self, reaction_type: str):
         """Send a reaction command (e.g., like, love, applause, wow, laugh)."""
@@ -136,6 +162,10 @@ class TeamsMeetingClient:
     # Internals
     # --------------------------------------------------------
 
+    def _uninitialize_current_state(self):
+        for key in self.current_state:
+            self.current_state[key] = None
+
     def _get_current_time_str(self) -> str:
         return datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
     
@@ -145,9 +175,7 @@ class TeamsMeetingClient:
     def _log_message_received(self, message):
         pprint(f"\n[bold green][{self._get_current_time_str()}] THREAD: {threading.current_thread().name}. \nRECEIVED: {json.loads(message)} [/bold green]")
     def _get_request_id(self) -> int:
-        current_id = self.request_id_counter
-        self.request_id_counter += 1
-        return current_id
+        return 1
 
     def _load_token(self) -> str:
         """Load token from file if it exists, else return DEFAULT_TOKEN."""
@@ -171,10 +199,10 @@ class TeamsMeetingClient:
         """Establish WebSocket connection and handle incoming messages."""
         try:
             async with websockets.connect(self.ws_url) as ws:
+                self.ws = ws
                 print(f"Connected to {self.ws_url}")
-                if self.on_connect_callback:
-                    self.on_connect_callback()
-                # Listen for messages until stop_event is set
+                self.current_state["isWsConnected"] = True
+                self.state_change_callback({"isWsConnected": True})
                 await self._receive_loop(ws)
         except Exception as e:
             print(f"WebSocket connection failed: {e}")
@@ -183,7 +211,8 @@ class TeamsMeetingClient:
         """Receive messages in a loop and handle them."""
         while not self.stop_event.is_set():
             try:
-                raw_msg = await asyncio.wait_for(ws.recv(), timeout=1.0)
+                #raw_msg = await asyncio.wait_for(ws.recv(), timeout=4.0)
+                raw_msg = await ws.recv()
                 self._log_message_received(raw_msg)
                 #pprint(f"[{self._get_current_time_str()}] THREAD: {threading.current_thread().name}. \nRECEIVED: {raw_msg}")
                 self._handle_message(raw_msg)
@@ -192,6 +221,9 @@ class TeamsMeetingClient:
                 continue
             except websockets.ConnectionClosed:
                 print("WebSocket connection closed.")
+                ws = None
+                self._uninitialize_current_state()
+                self.state_change_callback({"isWsConnected": False})
                 break
             except Exception as e:
                 print(f"Error receiving message: {e}")
@@ -229,37 +261,25 @@ class TeamsMeetingClient:
             self._process_meeting_update(meeting_update)
 
     def _process_meeting_update(self, meeting_update: dict):
-        """Look at 'canPair' to determine if in a meeting or not."""
-        meeting_permissions = meeting_update.get("meetingPermissions", {})
-        can_pair_now = meeting_permissions.get("canPair", True)
+        meeting_state = meeting_update.get("meetingState", {})
+        inMeeting = meeting_state.get("isInMeeting", False)
+        if not inMeeting:
+            meeting_state["isMuted"] = True
 
-        # If canPair changes from True -> False, meeting started
-        # If canPair changes from False -> True, meeting ended
+    # Handle first time cases where the current state is None
+        changed_states_dict = {}
 
-        if self.can_pair is None:
-            # First update, set the initial state
-            self.can_pair = can_pair_now
+        for key, value in meeting_state.items():
+            if key in self.current_state:
+                if value != self.current_state[key]:
+                    changed_states_dict[key] = value
+                    self.current_state[key] = value
 
-            if not can_pair_now:
-                # Meeting started
-                if self.meeting_ended_callback:
-                    self.meeting_ended_callback()
-            else:
-                # Meeting ended
-                if self.meeting_started_callback:
-                    self.meeting_started_callback()
-            return
+        if changed_states_dict:
+            print(f"State changed: {changed_states_dict}")
+            if self.state_change_callback:
+                self.state_change_callback(changed_states_dict)
 
-        if can_pair_now != self.can_pair:
-            self.can_pair = can_pair_now
-            if not can_pair_now:
-                # Meeting started
-                if self.meeting_ended_callback:
-                    self.meeting_ended_callback()
-            else:
-                # Meeting ended
-                if self.meeting_started_callback:
-                    self.meeting_started_callback()
 
     async def _close_ws(self):
         """Attempt to close the WebSocket if needed."""
@@ -278,31 +298,22 @@ class TeamsMeetingClient:
 
     async def _async_send(self, message: dict):
         """Send the message over the WebSocket in the async loop."""
-        try:
-            async with websockets.connect(self.ws_url) as ws:
-                # This approach opens a new connection for each send,
-                # which might not be ideal depending on your setup.
-                # Typically, you’d keep a persistent connection.
-                # For demonstration, we open a new connection each time.
-                await ws.send(json.dumps(message))
-        except Exception as e:
-            print(f"Failed to send message: {e}")
+        if  self.ws == None:
+            print("WebSocket not connected, cannot send message.")
+            return 
+        await self.ws.send(json.dumps(message))
 
 
 # --------------------------------------------------------
 #                  CALLBACK EXAMPLES
 # --------------------------------------------------------
-def on_meeting_start():
-    print("[CALLBACK] Meeting started!")
-
-def on_meeting_end():
-    print("[CALLBACK] Meeting ended!")
+def on_state_change_callback(state: dict):
+    print(f"State changed: {state}")
 
 def main():
     # Instantiate the client with optional callbacks
     client = TeamsMeetingClient(
-        meeting_started_callback=on_meeting_start,
-        meeting_ended_callback=on_meeting_end
+        state_change_callback=on_state_change_callback
     )
 
     print("Welcome to the TeamsMeetingClient CLI!")
@@ -321,6 +332,8 @@ def main():
 Available commands:
   start               - Start the WebSocket client (connect)
   stop                - Stop the WebSocket client (disconnect)
+  pair                - Send a pairing request
+  command <action> <parameters> - Send a custom command   
   reaction <type>     - Send a reaction (e.g., "reaction like")
   toggle-video        - Toggle video on/off
   toggle-mute         - Toggle mute on/off
@@ -337,12 +350,27 @@ Available commands:
         elif cmd[0].lower() == "stop":
             client.stop()
 
+        elif cmd[0].lower() == "pair":
+            client.send_pairing_request()
+
         elif cmd[0].lower() == "reaction":
             if len(cmd) < 2:
                 print("[ERROR] Usage: reaction <type>")
             else:
                 reaction_type = cmd[1]
                 client.send_reaction(reaction_type)
+        elif cmd[0].lower() == "command":
+            if len(cmd) < 2:
+                print("[ERROR] Usage: command <action> <parameters>")
+            else:
+                action = cmd[1]
+                parameters = {}
+                if len(cmd) > 2:
+                    # Parse additional parameters as key-value pairs
+                    for param in cmd[2:]:
+                        key, value = param.split("=")
+                        parameters[key] = value
+                client.send_custom_command(action, parameters)
 
         elif cmd[0].lower() == "toggle-video":
             client.toggle_video()

@@ -196,16 +196,32 @@ class TeamsMeetingClient:
         self.loop.run_until_complete(self._connect_and_listen())
 
     async def _connect_and_listen(self):
-        """Establish WebSocket connection and handle incoming messages."""
-        try:
-            async with websockets.connect(self.ws_url) as ws:
-                self.ws = ws
-                print(f"Connected to {self.ws_url}")
-                self.current_state["isWsConnected"] = True
-                self.state_change_callback({"isWsConnected": True})
-                await self._receive_loop(ws)
-        except Exception as e:
-            print(f"WebSocket connection failed: {e}")
+        while not self.stop_event.is_set():
+            try:
+                async with websockets.connect(self.ws_url) as ws:
+                    self.ws = ws
+                    print(f"Connected to {self.ws_url}")
+                    self.current_state["isWsConnected"] = True
+                    if self.state_change_callback:
+                        self.state_change_callback({"isWsConnected": True})
+                    # Listen for messages until the connection is closed or stop_event is set.
+                    await self._receive_loop(ws)
+            except websockets.ConnectionClosed:
+                print("WebSocket connection closed. Attempting to reconnect...")
+            except Exception as e:
+                print(f"WebSocket connection failed: {e}")
+            finally:
+                # Whether an error occurred or the connection closed, mark as disconnected.
+                self.current_state["isWsConnected"] = False
+                self.ws = None
+                if self.state_change_callback:
+                    self.state_change_callback({"isWsConnected": False})
+                
+            # If the stop_event is not set, wait a few seconds before reconnecting.
+            if not self.stop_event.is_set():
+                print("Waiting 3 seconds before attempting to reconnect...")
+                await asyncio.sleep(3)
+
 
     async def _receive_loop(self, ws):
         """Receive messages in a loop and handle them."""
@@ -298,7 +314,7 @@ class TeamsMeetingClient:
 
     async def _async_send(self, message: dict):
         """Send the message over the WebSocket in the async loop."""
-        if  self.ws == None:
+        if  self.current_state["isWsConnected"] == False:
             print("WebSocket not connected, cannot send message.")
             return 
         await self.ws.send(json.dumps(message))

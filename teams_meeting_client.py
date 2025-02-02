@@ -5,6 +5,11 @@ import asyncio
 import websockets
 from typing import Callable, Optional
 from urllib.parse import quote
+from datetime import datetime
+from rich import print as pprint
+from pprint import pprint as ppp
+#from rich.pretty import pprint
+from colorama import Fore, Back, Style
 
 
 DEFAULT_TOKEN = "61e9d3d4-dbd6-425d-b80f-8110f48f769c"
@@ -131,6 +136,14 @@ class TeamsMeetingClient:
     # Internals
     # --------------------------------------------------------
 
+    def _get_current_time_str(self) -> str:
+        return datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+    
+    def _log_message_send(self, message):
+        pprint(f"\n[bold red][{self._get_current_time_str()}] THREAD: {threading.current_thread().name}. \nSENT: {message} [/bold red]")
+
+    def _log_message_received(self, message):
+        pprint(f"\n[bold green][{self._get_current_time_str()}] THREAD: {threading.current_thread().name}. \nRECEIVED: {json.loads(message)} [/bold green]")
     def _get_request_id(self) -> int:
         current_id = self.request_id_counter
         self.request_id_counter += 1
@@ -171,9 +184,10 @@ class TeamsMeetingClient:
         while not self.stop_event.is_set():
             try:
                 raw_msg = await asyncio.wait_for(ws.recv(), timeout=1.0)
+                self._log_message_received(raw_msg)
+                #pprint(f"[{self._get_current_time_str()}] THREAD: {threading.current_thread().name}. \nRECEIVED: {raw_msg}")
                 self._handle_message(raw_msg)
-                print(f"Received message: {raw_msg}")
-            except asyncio.TimeoutError:
+            except asyncio.TimeoutError: 
                 # Periodic check if we should stop
                 continue
             except websockets.ConnectionClosed:
@@ -256,7 +270,8 @@ class TeamsMeetingClient:
         """Enqueue a message to be sent on the WebSocket connection."""
         # Because websockets is async, we must schedule this in the event loop
         if hasattr(self, "loop") and self.loop.is_running():
-            print(f"Sending message: {message}")
+            self._log_message_send(message)
+            #pprint(f"[{self._get_current_time_str()}] THREAD: {threading.current_thread().name}. \nSENT: {message}")
             asyncio.run_coroutine_threadsafe(self._async_send(message), self.loop)
         else:
             print("WebSocket not connected or loop not running, cannot send message.")
@@ -273,44 +288,83 @@ class TeamsMeetingClient:
         except Exception as e:
             print(f"Failed to send message: {e}")
 
-if __name__ == "__main__":
-    # Example usage of the TeamsMeetingClient
-    def on_meeting_start():
-        print("Meeting started!")
 
-    def on_meeting_end():
-        print("Meeting ended!")
+# --------------------------------------------------------
+#                  CALLBACK EXAMPLES
+# --------------------------------------------------------
+def on_meeting_start():
+    print("[CALLBACK] Meeting started!")
 
-    myClient = TeamsMeetingClient(
+def on_meeting_end():
+    print("[CALLBACK] Meeting ended!")
+
+def main():
+    # Instantiate the client with optional callbacks
+    client = TeamsMeetingClient(
         meeting_started_callback=on_meeting_start,
         meeting_ended_callback=on_meeting_end
     )
-    myClient.start()
 
-    input("Press Enter to stop the client...")
+    print("Welcome to the TeamsMeetingClient CLI!")
+    print("Type 'help' for a list of commands.")
+    while True:
+        cmd = input("> ").strip().split()
+        if not cmd:
+            continue  # Empty input
 
+        # Break the loop on "quit"/"exit"
+        if cmd[0].lower() in ["quit", "exit", "q"]:
+            break
+        
+        elif cmd[0].lower() == "help":
+            print("""
+Available commands:
+  start               - Start the WebSocket client (connect)
+  stop                - Stop the WebSocket client (disconnect)
+  reaction <type>     - Send a reaction (e.g., "reaction like")
+  toggle-video        - Toggle video on/off
+  toggle-mute         - Toggle mute on/off
+  toggle-hand         - Raise/lower hand
+  toggle-background   - Toggle background blur
+  leave-call          - Leave the current call
+  help                - Show this help message
+  quit or exit        - Quit the program
+""")
 
-    # Example of sending a reaction
-    myClient.send_reaction("like")
+        elif cmd[0].lower() == "start":
+            client.start()
 
-    # Example of toggling background blur
-    myClient.toggle_background_blur()
+        elif cmd[0].lower() == "stop":
+            client.stop()
 
-    # Example of toggling video
-    myClient.toggle_video()
+        elif cmd[0].lower() == "reaction":
+            if len(cmd) < 2:
+                print("[ERROR] Usage: reaction <type>")
+            else:
+                reaction_type = cmd[1]
+                client.send_reaction(reaction_type)
 
-    # Example of toggling mute
-    myClient.toggle_mute()
+        elif cmd[0].lower() == "toggle-video":
+            client.toggle_video()
 
-    # Example of toggling hand
-    myClient.toggle_hand()
+        elif cmd[0].lower() == "toggle-mute":
+            client.toggle_mute()
 
-    # Example of leaving the call
-    myClient.leave_call()
+        elif cmd[0].lower() == "toggle-hand":
+            client.toggle_hand()
 
-    # Wait for a while before stopping the client
-    input("Press Enter to stop the client...")
+        elif cmd[0].lower() == "toggle-background":
+            client.toggle_background_blur()
 
-    # Stop the client
-    myClient.stop()
-    print("Client stopped.")
+        elif cmd[0].lower() == "leave-call":
+            client.leave_call()
+
+        else:
+            print(f"[ERROR] Unknown command '{cmd[0]}'. Type 'help' for usage.")
+
+    # When loop ends, stop the client and exit
+    client.stop()
+    print("Exiting. Goodbye!")
+
+if __name__ == "__main__":
+    main()

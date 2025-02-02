@@ -25,6 +25,7 @@ def on_client_connect():
     socketio.emit("set-led-state", {"id": "connected", "state": True})
 
 myClient = TeamsMeetingClient(meeting_started_callback=on_meeting_start, meeting_ended_callback=on_meeting_end, on_connect_callback=on_client_connect)
+#myClient = TeamsMeetingClient()
 myClient.start()
 
 # State storage
@@ -33,13 +34,6 @@ state = {
     "sliders": {"vol": 50, "bright": 50},     # Sliders with initial values
     "leds": {"meeting": False, "connected": False}  # LEDs with their states
 }
-
-@app.teardown_appcontext
-def cleanup(exception=None):
-    print("Cleaning up resources...")
-    myClient.stop()
-    # Add cleanup code here, such as closing database connections
-    # or releasing any global resources.
 
 # HTTP route to render the web page
 @app.route('/')
@@ -71,9 +65,9 @@ def handle_button_toggle(data):
         # Toggle the button state on the server
         match button_id:
             case "mic":
-                myClient.toggle_mic()
+                myClient.toggle_video()
             case "cam":
-                myClient.toggle_cam()
+                myClient.toggle_mute()
 
         state["buttons"][button_id] = not state["buttons"][button_id]
         # Broadcast the updated state to all clients
@@ -97,4 +91,5 @@ def handle_slider_change(data):
 
 # Run the Flask app with WebSocket support
 if __name__ == '__main__':
+    print("\n\n\n\n\n\n Starting Flask app....")
     socketio.run(app, host='0.0.0.0', port=80, debug=True)

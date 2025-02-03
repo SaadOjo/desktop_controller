@@ -126,14 +126,19 @@ class ArduinoDevice:
         self.send_command("CONT=1")
         self.request_sync()
 
+ 
         while not self.stop_flag:
 
-            if self.ser.in_waiting > 0:
-                line = self.ser.readline().decode("utf-8").strip()
-                if line:
-                    self._handle_line(line)
-            else:
-                time.sleep(0.01)
+            try:
+                if self.ser.in_waiting > 0:
+                    line = self.ser.readline().decode("utf-8").strip()
+                    if line:
+                        self._handle_line(line)
+                else:
+                    time.sleep(0.01)
+            except serial.SerialException as e:
+                print(f"Serial error: {e}")
+                break
 
 
     def _handle_line(self, line: str):

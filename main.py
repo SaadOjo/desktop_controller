@@ -4,6 +4,7 @@
 from flask import Flask, render_template, request
 from flask_socketio import SocketIO, send, emit
 from teams_meeting_client import TeamsMeetingClient
+from my_controller import MyController
 import time
 import threading
 import queue
@@ -14,7 +15,20 @@ app.config['SECRET_KEY'] = 'mysecretkey'
 # Initialize SocketIO
 socketio = SocketIO(app, async_mode="threading")
 #socketio = SocketIO(app)
-print("Async mode is:", socketio.async_mode)
+#print("Async mode is:", socketio.async_mode)
+
+def on_state_change_callback(state_changes_dict):
+    print("State changes:", state_changes_dict)
+    for key,state in state_changes_dict.items():
+        match key:
+            case "mic":
+                print(f"Setting mic state: {state}")
+                myClient.set_microphone(state)
+            case "cam":
+                print(f"Setting camera state: {state}")
+                myClient.set_camera(state)
+
+myController = MyController(on_state_change_callback)
 
 message_queue = queue.Queue()
 
@@ -29,6 +43,12 @@ def message_queue_handler():
         message = message_queue.get()
         print(f"Message in queue: {message}")
         socketio.emit(message["event"], message["data"], namespace='/')
+        if message["event"] in["set-button-state"]:
+            state = message["data"]
+            if state is None:
+                continue
+            print(f"Setting led state: {message['data']}")
+            myController.led(message["data"]["id"], message["data"]["state"])
 
 
 def queue_emit(event_name, data):

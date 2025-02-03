@@ -35,7 +35,8 @@ class MyController:
 
     def led(self, led, value):
         if led in self.reverse_switch_mapping:
-            led_number = int(self.reverse_switch_mapping[led.split("SW")[1]])
+            led 
+            led_number = int(self.reverse_switch_mapping[led].split("SW")[1])
             self.device.set_led(led_number, value)
         else:
             print("LED not found")
@@ -80,7 +81,7 @@ if __name__ == '__main__':
                     state = parts[2]
                     if  state in ["on", "off"]:
                         controller.led(led_name, 1 if state == "on" else 0)
-                        print(f"LED for {led_name} turned {'ON' if state == 'on' else 'OFF'}")
+                        print(f"LED for {led_name} turned {state}")
                     else:
                         print("Invalid LED command. Use 'led <1/2> <on/off>'.")
                 except ValueError:

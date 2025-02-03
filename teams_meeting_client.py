@@ -134,6 +134,13 @@ class TeamsMeetingClient:
         }
         self._send_message(action_data)
 
+    def set_camera(self, value):
+        value = bool(value)
+        if value != bool(self.current_state["isVideoOn"]):
+            print(f"toggle_video: {value}")
+            self.toggle_video()
+
+
     def toggle_mute(self):
         action_data = {
             "action": "toggle-mute",
@@ -141,6 +148,13 @@ class TeamsMeetingClient:
             "requestId": self._get_request_id()
         }
         self._send_message(action_data)
+
+
+    def set_microphone(self, value):
+        value = not bool(value)
+        if value != bool(self.current_state["isMuted"]):
+            print(f"toggle_mute: {value}")
+            self.toggle_mute()
 
     def toggle_hand(self):
         action_data = {
@@ -352,7 +366,9 @@ Available commands:
   command <action> <parameters> - Send a custom command   
   reaction <type>     - Send a reaction (e.g., "reaction like")
   toggle-video        - Toggle video on/off
+  camera <on/off>     - Turn camera on/off
   toggle-mute         - Toggle mute on/off
+  microphone <on/off> - Turn microphone on/off
   toggle-hand         - Raise/lower hand
   toggle-background   - Toggle background blur
   leave-call          - Leave the current call
@@ -393,6 +409,12 @@ Available commands:
 
         elif cmd[0].lower() == "toggle-mute":
             client.toggle_mute()
+
+        elif cmd[0].lower() == "camera":
+            client.set_camera(True if cmd[1] == "on" else False)
+
+        elif cmd[0].lower() == "microphone":
+            client.set_microphone(True if cmd[1] == "on" else False)
 
         elif cmd[0].lower() == "toggle-hand":
             client.toggle_hand()

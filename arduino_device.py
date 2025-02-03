@@ -103,11 +103,10 @@ class ArduinoDevice:
     # ------------------------------
     #  LED Control
     # ------------------------------
-    def set_led1(self, on_off: bool):
-        self.send_command("LED1=1" if on_off else "LED1=0")
-
-    def set_led2(self, on_off: bool):
-        self.send_command("LED2=1" if on_off else "LED2=0")
+    def set_led(self, led_number, on_off):
+        led_number = int(led_number)
+        on_off = int(on_off)
+        self.send_command(f"LED{led_number}={on_off}")
 
     def set_test_mode(self, enabled: bool):
         self.send_command("TEST=1" if enabled else "TEST=0")
@@ -164,10 +163,10 @@ def state_change_callback(state_changes_dict):
     for key, value in state_changes_dict.items():
         if key == "SW1":
             print(f"SW1 changed to {value}")
-            myDevice.set_led1(int(value))
+            myDevice.set_led(1, value)
         elif key == "SW2":
             print(f"SW2 changed to {value}")
-            myDevice.set_led2(int(value))
+            myDevice.set_led(2, value)
 
 
 if __name__ == "__main__":
@@ -205,9 +204,9 @@ if __name__ == "__main__":
                 print("Sync request sent.")
             elif command == "status":
                 print("\nCurrent sensor values:")
-                print(f"  SW1: {myDevice.sw1}")
-                print(f"  SW2: {myDevice.sw2}")
-                print(f"  POT: {myDevice.pot}")
+                print(f"  SW1: {myDevice.current_state['SW1']}")
+                print(f"  SW2: {myDevice.current_state['SW2']}")
+                print(f"  POT: {myDevice.current_state['POT']}")
             elif command == "test" and len(parts) == 2:
                 state = parts[1]
                 if state in ["on", "off"]:
@@ -220,10 +219,7 @@ if __name__ == "__main__":
                     led_number = int(parts[1])
                     state = parts[2]
                     if led_number in [1, 2] and state in ["on", "off"]:
-                        if led_number == 1:
-                            myDevice.set_led1(state == "on")
-                        elif led_number == 2:
-                            myDevice.set_led2(state == "on")
+                        myDevice.set_led(led_number, 1 if state=="on" else 0)
                         print(f"LED{led_number} turned {'ON' if state == 'on' else 'OFF'}")
                     else:
                         print("Invalid LED command. Use 'led <1/2> <on/off>'.")

@@ -16,7 +16,8 @@ class ArduinoDevice:
 
     def __init__(self, 
                  expected_pid=24577,  # Example description
-                 baudrate=9600, 
+                 baudrate=9600,
+                 state_change_callback=None, 
                  timeout=1):
         """
         :param expected_description: A substring or exact match in port.description 
@@ -32,49 +33,52 @@ class ArduinoDevice:
         self.read_thread = None
         self.stop_flag = False
 
-        # Store current states (inverted switch logic: 0=pressed, 1=not pressed)
-        self.sw1 = None
-        self.sw2 = None
-        self.pot = None
+        self.invert_switches = False
+ 
+        
 
-        # Callbacks for changes
-        self.on_sw1_changed = None  # function(int new_val)
-        self.on_sw2_changed = None  # function(int new_val)
-        self.on_pot_changed = None  # function(int new_val)
+        self.current_state = {
+            "SW1": None,
+            "SW2": None,
+            "POT": None,
+        }
+        
+        self.state_change_callback = state_change_callback
 
-        # Attempt to find and open the device
-        self._auto_detect_and_connect()
+    def start(self):
+        self.read_thread = threading.Thread(target=self._auto_detect_and_connect, daemon=True)
+        self.read_thread.start()
 
     def _auto_detect_and_connect(self):
         """Enumerate serial ports; find the one matching `expected_description`; open it."""
-        matching_port = None
-        for p in list_ports.comports():
-            # Check if the device description contains our expected string
-            # or if p.vid / p.pid match known vendor/product IDs.
-            # Example: p.description might be "Arduino UNO (COM3)" on Windows
-            # or "/dev/ttyACM0 - Arduino Uno" on Linux, etc.
-            pid = p.pid or ""
-            if self.expected_pid == pid:
-                matching_port = p.device
-                break
 
-        if not matching_port:
-            raise DeviceNotFoundError(
-                f"Could not find device with pid: '{self.pid}'."
-            )
+        while not self.stop_flag:
+            try:
+                matching_port = None
+                for p in list_ports.comports():
+                    pid = p.pid or ""
+                    if self.expected_pid == pid:
+                        matching_port = p.device
+                        break
 
-        # We found our device, so open the serial port
-        self.ser = serial.Serial(matching_port, self.baudrate, timeout=self.timeout)
-        time.sleep(2)  # allow time for Arduino to reset on open
+                if not matching_port:
+                    raise DeviceNotFoundError(
+                        f"Could not find device with pid: '{self.pid}'."
+                    )
 
-        # Start continuous background reading
-        self.stop_flag = False
-        self.read_thread = threading.Thread(target=self._read_loop, daemon=True)
-        self.read_thread.start()
+                # We found our device, so open the serial port
+                self.ser = serial.Serial(matching_port, self.baudrate, timeout=self.timeout)
+                time.sleep(2)  # allow time for Arduino to reset on open
 
-        # Enable continuous transmit mode and request an initial sync
-        self.send_command("CONT=1")
-        self.request_sync()
+                # Start continuous background reading
+                self.stop_flag = False
+                print(f"Connected to Arduino on {matching_port}")
+                self._read_loop() #blocks code
+            except Exception as e:
+                print(f"Error: {e}")
+                print("Retrying in 1 seconds...")
+                time.sleep(1)
+
 
     def disconnect(self):
         """Stop reading thread and close the serial port."""
@@ -93,6 +97,8 @@ class ArduinoDevice:
         if self.ser and self.ser.is_open:
             line = cmd.strip() + "\n"
             self.ser.write(line.encode("utf-8"))
+        else:
+            print(f"Serial port not open. Command '{cmd}' not sent.")
 
     # ------------------------------
     #  LED Control
@@ -110,18 +116,26 @@ class ArduinoDevice:
     #  Internal Reading
     # ------------------------------
     def _read_loop(self):
+
+        if self.stop_flag:
+            return
+        # Run one time execution code here
+
+        if not self.ser or not self.ser.is_open:
+            return
+
+        self.send_command("CONT=1")
+        self.request_sync()
+
         while not self.stop_flag:
-            try:
-                if self.ser.in_waiting > 0:
-                    line = self.ser.readline().decode("utf-8").strip()
-                    if line:
-                        self._handle_line(line)
-                else:
-                    time.sleep(0.01)
-            except Exception as e:
-                # In production, handle/log errors more robustly
-                print(f"[ArduinoDevice] Serial read error: {e}")
-                time.sleep(0.5)
+
+            if self.ser.in_waiting > 0:
+                line = self.ser.readline().decode("utf-8").strip()
+                if line:
+                    self._handle_line(line)
+            else:
+                time.sleep(0.01)
+
 
     def _handle_line(self, line: str):
         """
@@ -138,23 +152,91 @@ class ArduinoDevice:
                 key, val_str = p.split("=", 1)
                 updates[key] = val_str
 
-        if "SW1" in updates:
-            new_sw1 = int(updates["SW1"])
-            if self.sw1 != new_sw1:
-                self.sw1 = new_sw1
-                if self.on_sw1_changed:
-                    self.on_sw1_changed(new_sw1)
+        for key in updates:
+            if key in self.current_state:
+                if self.current_state[key] != int(updates[key]):
+                    self.current_state[key] = int(updates[key])
+                    if self.state_change_callback:
+                        self.state_change_callback(updates)
 
-        if "SW2" in updates:
-            new_sw2 = int(updates["SW2"])
-            if self.sw2 != new_sw2:
-                self.sw2 = new_sw2
-                if self.on_sw2_changed:
-                    self.on_sw2_changed(new_sw2)
+def state_change_callback(state_changes_dict):
+    print("State changes:", state_changes_dict)
+    for key, value in state_changes_dict.items():
+        if key == "SW1":
+            print(f"SW1 changed to {value}")
+            myDevice.set_led1(int(value))
+        elif key == "SW2":
+            print(f"SW2 changed to {value}")
+            myDevice.set_led2(int(value))
 
-        if "POT" in updates:
-            new_pot = int(updates["POT"])
-            if self.pot != new_pot:
-                self.pot = new_pot
-                if self.on_pot_changed:
-                    self.on_pot_changed(new_pot)
+
+if __name__ == "__main__":
+    print("\nWelcome to Arduino CLI!")
+    print("Attempting to connect to Arduino...\n")
+
+
+    myDevice = ArduinoDevice(state_change_callback=state_change_callback)
+    myDevice.start()
+
+    while True:
+        try:
+            cmd = input("\nEnter command: ").strip().lower()
+            parts = cmd.split()
+
+            if not parts:
+                continue
+
+            command = parts[0]
+
+            if command in ["exit", "quit", "q"]:
+                print("Disconnecting...")
+                myDevice.disconnect()
+                print("Disconnected. Exiting.")
+                break
+            elif command in ["help", "h"]:
+                print("\nAvailable commands:")
+                print("  led <led_number> <on/off>   - Control LEDs")
+                print("  test <on/off>               - Enable or disable test mode")
+                print("  sync                        - Request sensor sync")
+                print("  status                      - Show current sensor values")
+                print("  exit                        - Disconnect and exit")
+            elif command == "sync":
+                myDevice.request_sync()
+                print("Sync request sent.")
+            elif command == "status":
+                print("\nCurrent sensor values:")
+                print(f"  SW1: {myDevice.sw1}")
+                print(f"  SW2: {myDevice.sw2}")
+                print(f"  POT: {myDevice.pot}")
+            elif command == "test" and len(parts) == 2:
+                state = parts[1]
+                if state in ["on", "off"]:
+                    myDevice.set_test_mode(state == "on")
+                    print(f"Test mode {'ENABLED' if state == 'on' else 'DISABLED'}")
+                else:
+                    print("Invalid test mode value. Use 'on' or 'off'.")
+            elif command == "led" and len(parts) == 3:
+                try:
+                    led_number = int(parts[1])
+                    state = parts[2]
+                    if led_number in [1, 2] and state in ["on", "off"]:
+                        if led_number == 1:
+                            myDevice.set_led1(state == "on")
+                        elif led_number == 2:
+                            myDevice.set_led2(state == "on")
+                        print(f"LED{led_number} turned {'ON' if state == 'on' else 'OFF'}")
+                    else:
+                        print("Invalid LED command. Use 'led <1/2> <on/off>'.")
+                except ValueError:
+                    print("Invalid LED number. Use 'led <1/2> <on/off>'.")
+            else:
+                print("Unknown command. Type 'help' for available commands.")
+
+        except KeyboardInterrupt:
+            print("\nDisconnecting...")
+            myDevice.disconnect()
+            print("Disconnected. Exiting.")
+            break
+        except Exception as e:
+            print(f"Error: {e}")
+

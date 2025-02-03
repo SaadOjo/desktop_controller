@@ -108,7 +108,6 @@ def handle_slider_change(data):
         queue_emit("set-slider-value", {"id": slider_id, "value": slider_value})
 
 
-
 # Run the Flask app with WebSocket support
 if __name__ == '__main__':
     print("\n\n\n\n\n\n Starting Flask app....")

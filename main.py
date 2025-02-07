@@ -6,6 +6,7 @@ from flask_socketio import SocketIO, send, emit
 from teams_meeting_client import TeamsMeetingClient
 from my_controller import MyController
 import time
+import datetime
 import threading
 import queue
 # Initialize Flask app
@@ -17,7 +18,7 @@ socketio = SocketIO(app, async_mode="threading")
 #socketio = SocketIO(app)
 #print("Async mode is:", socketio.async_mode)
 
-def on_state_change_callback(state_changes_dict):
+def controller_on_state_change_callback(state_changes_dict):
     print("State changes:", state_changes_dict)
     for key,state in state_changes_dict.items():
         match key:
@@ -28,20 +29,27 @@ def on_state_change_callback(state_changes_dict):
                 print(f"Setting camera state: {state}")
                 myClient.set_camera(state)
 
-myController = MyController(on_state_change_callback)
+myController = MyController(controller_on_state_change_callback)
 
 message_queue = queue.Queue()
 
 connected_clients = set()
+ac = 0  # Counter for active connections
+
 
 def message_queue_handler():
+    global ac
     while True:
-        if len(connected_clients) == 0:
+        #print(f"sid of clients: {connected_clients}")
+        print(f"number of connected clients: {ac}, id of the tracking variable: {id(ac)}")
+        print(f"[{datetime.datetime.now()}] - Calling from thread: {threading.current_thread().name}")
+        #if len(connected_clients) == 0:
+        if ac == 0:
             print("No clients connected, waiting...")
             time.sleep(1)
             continue
         message = message_queue.get()
-        print(f"Message in queue: {message}")
+        print(f"Message gotten from queue: {message}")
         socketio.emit(message["event"], message["data"], namespace='/')
         if message["event"] in["set-button-state"]:
             state = message["data"]
@@ -92,6 +100,8 @@ def index():
 def handle_connect():
     print('onConnect: Client connected')
     connected_clients.add(request.sid)
+    global ac
+    ac += 1
     teams_client_state = myClient.get_full_state()
     on_state_change_callback(teams_client_state)
 
@@ -100,7 +110,9 @@ def handle_connect():
 
 @socketio.on('disconnect')
 def handle_disconnect():
+    global ac
     print('Client disconnected')
+    ac -= 1
     connected_clients.remove(request.sid)
 
 
@@ -131,5 +143,5 @@ def handle_slider_change(data):
 # Run the Flask app with WebSocket support
 if __name__ == '__main__':
     print("\n\n\n\n\n\n Starting Flask app....")
-    socketio.run(app, host='0.0.0.0', port=80, debug=True)
+    socketio.run(app, host='0.0.0.0', port=80, debug=True, use_reloader=False)
 

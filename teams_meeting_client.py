@@ -135,7 +135,8 @@ class TeamsMeetingClient:
         self._send_message(action_data)
 
     def set_camera(self, value):
-        value = bool(value)
+        print("calling set camera")
+        value = bool(int(value))
         if value != bool(self.current_state["isVideoOn"]):
             print(f"toggle_video: {value}")
             self.toggle_video()
@@ -151,7 +152,8 @@ class TeamsMeetingClient:
 
 
     def set_microphone(self, value):
-        value = not bool(value)
+        print(f"calling set microphone")
+        value = not bool(int(value))
         if value != bool(self.current_state["isMuted"]):
             print(f"toggle_mute: {value}")
             self.toggle_mute()

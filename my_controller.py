@@ -53,7 +53,9 @@ if __name__ == '__main__':
         print("State changes:", state_changes_dict)
 
 
-    controller = MyController(state_change_callback=on_state_change_callback)
+    #controller = MyController(state_change_callback=on_state_change_callback)
+    controller = MyController()
+
 
     while True:
         try:
